@@ -1292,8 +1292,32 @@ def tool_import_character(c, a):
         "/api/characters/import", fields,
         filename=os.path.basename(path), file_bytes=read_text_file(path),
     )
-    if isinstance(result, dict) and result.get("file_name"):
-        return "已导入角色卡，avatar：%s" % result["file_name"]
+    if isinstance(result, dict):
+        # 导入接口只给文件名主干（各格式还不一样），扩展名要靠实际查一次才准
+        raw_name = ""
+        for key in ("avatar", "file_name", "path"):
+            val = result.get(key)
+            if isinstance(val, str) and val.strip():
+                raw_name = val.strip()
+                break
+        if raw_name:
+            avatar = ""
+            try:
+                avatar, _name, _card = c.find_character(raw_name)
+            except STError:
+                avatar = ""
+            if not avatar:
+                avatar = raw_name if os.path.splitext(raw_name)[1] else raw_name + ".png"
+            return "已导入角色卡「%s」\nhandle：%s%s" % (
+                raw_name,
+                handle_of("char", avatar),
+                hint_block(
+                    [
+                        "先跑 st_card_audit（零成本静态体检）",
+                        "再用 st_prompt_preview 看设定会不会被注入",
+                    ]
+                ),
+            )
     return "导入返回：%s" % brief(result, 300)
 
 
