@@ -673,7 +673,7 @@ def load_global_entries(c, cfg, skip=()):
 
 
 def lore_config(c, overrides=None):
-    """读取 ST 的全局世界书设置（扫描深度、大小写、预算等）。"""
+    """读取 ST 的全局世界书设置（扫描深度、大小写、全局挂载等）。"""
     bundle = {}
     try:
         bundle = c.settings_bundle()
@@ -685,7 +685,6 @@ def lore_config(c, overrides=None):
         "case_sensitive": bool(wi.get("world_info_case_sensitive", False)),
         "match_whole_words": bool(wi.get("world_info_match_whole_words", False)),
         "recursive": bool(wi.get("world_info_recursive", True)),
-        "budget": wi.get("world_info_budget", 25),
         "include_names": bool(wi.get("world_info_include_names", False)),
         "global_select": ((wi.get("world_info") or {}).get("globalSelect") or []),
     }
@@ -693,10 +692,6 @@ def lore_config(c, overrides=None):
         cfg["depth"] = int(cfg["depth"])
     except (TypeError, ValueError):
         cfg["depth"] = 4
-    try:
-        cfg["max_context"] = int(bundle.get("max_context") or 0)
-    except (TypeError, ValueError):
-        cfg["max_context"] = 0
     if overrides:
         for k, v in overrides.items():
             if v is not None:
@@ -906,14 +901,6 @@ def assemble_prompt(c, card, chat_messages, opts=None):
         messages.append({"role": "system", "content": system_text})
         report["system_chars"] = len(system_text)
         report["system_tokens"] = est_tokens(system_text)
-    report["max_context"] = cfg.get("max_context") or 0
-    report["budget"] = cfg.get("budget")
-    report["budget_tokens"] = 0
-    try:
-        report["budget_tokens"] = int(
-            report["max_context"] * float(report["budget"] or 0) / 100.0)
-    except (TypeError, ValueError):
-        report["budget_tokens"] = 0
     messages += [{"role": m.get("role") or "user", "content": str(m.get("content") or "")}
                  for m in history]
 
@@ -949,18 +936,6 @@ def assemble_prompt(c, card, chat_messages, opts=None):
     report["total_tokens"] = (report["system_tokens"] + report["depth_tokens"]
                               + report["history_tokens"])
 
-    budget_tokens = report.get("budget_tokens") or 0
-    if report["max_context"] and report["total_tokens"]:
-        if report["total_tokens"] > report["max_context"]:
-            report["notes"].append(
-                "提示词合计约 %d tokens（估算）已超过 max_context %d —— 真实酒馆会丢弃超出的部分，"
-                "下面列的是未裁剪的理论值"
-                % (report["total_tokens"], report["max_context"]))
-        elif budget_tokens and report["total_tokens"] > budget_tokens:
-            report["notes"].append(
-                "提示词 %d tokens 超过世界书预算（%d%% × %d = %d），真实使用时会有条目被丢弃"
-                % (report["total_tokens"], report["budget"],
-                   report["max_context"], budget_tokens))
     return messages, report
 
 
@@ -1017,18 +992,15 @@ def report_lines(report, show_skipped=True):
     if report.get("scan_preview"):
         rows.append("扫描内容预览：%s" % report["scan_preview"].replace("\n", " / "))
     rows.append("条目命中：注入 %d 条 / 跳过 %d 条" % (report["injected"], report["skipped"]))
-    ctx = ("  /  上下文上限 %d" % report["max_context"]) if report.get("max_context") else ""
     rows.append(
-        "提示词：系统块约 %d + 按深度插入约 %d + 对话约 %d = 合计约 %d tokens%s"
+        "提示词规模：系统块约 %d + 按深度插入约 %d + 对话约 %d = 合计约 %d tokens（估算）"
         % (report["system_tokens"], report.get("depth_tokens") or 0,
            report.get("history_tokens") or 0,
-           report.get("total_tokens", report["system_tokens"]), ctx))
+           report.get("total_tokens", report["system_tokens"])))
     if report.get("depth_inserted"):
         rows.append("按深度插入：%s" % "、".join(
             "深度 %d/%s %d 条" % (d["depth"], d["role"], d["count"])
             for d in report["depth_inserted"]))
-    rows.append("口径：上面是「按触发规则算出来会注入」的理论值——"
-                "本工具不复刻 ST 的上下文预算裁剪，真实酒馆装不下的部分会被丢弃。")
     rows.append("")
     rows.append("【注入的条目】")
     hit = [e for e in report["entries"] if e["status"] == "注入"]
@@ -1063,7 +1035,7 @@ def spend_preview(c, report, rounds=1):
         "⚠️ 尚未执行。这一步会真的调用模型，消耗你账上的额度。\n"
         "模型：%s / %s\n"
         "轮数：%d 轮 = %d 次模型调用\n"
-        "提示词规模：约 %d tokens（估算；本工具不复刻 ST 的预算裁剪）\n"
+        "提示词规模：约 %d tokens（估算）\n"
         "确认后请带 confirm=true 重新调用。"
         % (
             source,
