@@ -1,0 +1,14 @@
+{
+  "_说明": "把这段合并进你自己客户端的 MCP 配置文件（不是直接覆盖）。把 args 里的路径改成你放 sillytavern_mcp.py 的实际路径；Windows 下反斜杠要写成两个。",
+  "mcpServers": {
+    "sillytavern": {
+      "command": "python",
+      "args": [
+        "C:\\你放脚本的目录\\sillytavern_mcp.py"
+      ],
+      "env": {
+        "ST_BASE_URL": "http://127.0.0.1:8000"
+      }
+    }
+  }
+}
