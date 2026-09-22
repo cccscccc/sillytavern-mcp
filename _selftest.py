@@ -6,6 +6,15 @@ import os
 import subprocess
 import sys
 
+# Windows 中文控制台默认是 GBK，打印工具返回里的 ✓ 等字符会直接抛
+# UnicodeEncodeError，导致自测中途崩掉。这里强制 UTF-8（3.6 上没有
+# reconfigure，失败就忽略，退回系统默认）。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 # 解释器：默认用当前 Python；多版本共存时可用 ST_PY 环境变量指定
 PY = os.environ.get("ST_PY") or sys.executable
 SRV = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sillytavern_mcp.py")
@@ -79,7 +88,13 @@ try:
     try:
         txt = r["result"]["content"][0]["text"]
         for line in txt.splitlines():
-            if "avatar:" in line:
+            # st_list_characters 现在输出的是 handle: char:xxx.png。
+            # 旧写法只认 avatar:，会让下面所有角色卡测试被静默跳过。
+            if "handle:" in line:
+                handle = line.split("handle:")[1].split("|")[0].strip()
+                if handle.startswith("char:"):
+                    chars.append(handle)
+            elif "avatar:" in line:
                 chars.append(line.split("avatar:")[1].split("|")[0].strip())
     except Exception:
         pass
