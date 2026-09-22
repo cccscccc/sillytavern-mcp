@@ -39,7 +39,7 @@ import urllib.parse
 import urllib.request
 from datetime import datetime
 
-VERSION = "1.3.0"
+VERSION = "1.3.1"
 SERVER_NAME = "sillytavern"
 SUPPORTED_PROTOCOLS = ("2025-06-18", "2025-03-26", "2024-11-05", "2024-10-07")
 DEFAULT_PROTOCOL = "2024-11-05"

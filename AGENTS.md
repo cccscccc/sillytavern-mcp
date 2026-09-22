@@ -35,7 +35,7 @@ X 光按 SillyTavern 前端的真实算法复刻：`constant` / `disable`、主�
 
 ## 返回怎么读
 
-1. **资源标识用 handle**：`char:xxx` / `book:xxx` / `chat:xxx`。list 类工具都会返回 handle，
+1. **资源标识用 handle**：`char:xxx` / `book:xxx` / `chat:xxx`。list 类工具会返回 handle，导入 / 导出 / 复制也会返回，
    直接把它喂给 get 类工具即可。传错类型会明确报「类型不对」，不会含糊地说"找不到"。
    名字也接受模糊匹配（只写一半也行）。但**一旦对上多张卡就直接报错**，并把每一张的 handle 列出来，
    不会再闷声取第一张——包括「一个名字刚好等于另一张卡 avatar 主干」这种情形。拿不准就先用
